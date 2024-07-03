@@ -1,0 +1,76 @@
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/doctors")
+public class DoctorController {
+    @Autowired
+    private DoctorService doctorService;
+
+    @PostMapping
+    public Doctor addDoctor(@RequestBody Doctor doctor) {
+        return doctorService.saveDoctor(doctor);
+    }
+
+    @DeleteMapping("/{id}")
+    public void removeDoctor(@PathVariable Long id) {
+        doctorService.deleteDoctor(id);
+    }
+}
+
+@RestController
+@RequestMapping("/patients")
+public class PatientController {
+    @Autowired
+    private PatientService patientService;
+    @Autowired
+    private DoctorService doctorService;
+
+    @PostMapping
+    public Patient addPatient(@RequestBody Patient patient) {
+        return patientService.savePatient(patient);
+    }
+
+    @DeleteMapping("/{id}")
+    public void removePatient(@PathVariable Long id) {
+        patientService.deletePatient(id);
+    }
+
+    @GetMapping("/suggest-doctor/{id}")
+    public ResponseEntity<?> suggestDoctor(@PathVariable Long id) {
+        Optional<Patient> patientOpt = patientService.getPatientById(id);
+        if (patientOpt.isPresent()) {
+            Patient patient = patientOpt.get();
+            String speciality = getSpecialityBySymptom(patient.getSymptom());
+            List<Doctor> doctors = doctorService.getDoctorsByCityAndSpeciality(patient.getCity(), speciality);
+            if (doctors.isEmpty()) {
+                return ResponseEntity.ok("There isn’t any doctor present at your location for your symptom");
+            } else {
+                return ResponseEntity.ok(doctors);
+            }
+        } else {
+            return ResponseEntity.status(404).body("Patient not found");
+        }
+    }
+
+    private String getSpecialityBySymptom(String symptom) {
+        switch (symptom) {
+            case "Arthritis":
+            case "Back Pain":
+            case "Tissue injuries":
+                return "Orthopaedic";
+            case "Dysmenorrhea":
+                return "Gynecology";
+            case "Skin infection":
+            case "Skin burn":
+                return "Dermatology";
+            case "Ear pain":
+                return "ENT";
+            default:
+                return "";
+        }
+    }
+}
